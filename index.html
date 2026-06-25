@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Asymptotic Trainer — number of calls to f</title>
+<style>
+  :root{
+    --paper:#ffffff; --bg:#eceef2; --ink:#1a1a1a; --muted:#6b7280;
+    --rule:#222; --kw:#1d4ed8; --accent:#4338ca;
+    --good:#15803d; --good-bg:#dcfce7; --bad:#b91c1c; --bad-bg:#fee2e2;
+    --pick:#4338ca; --pick-bg:#eef2ff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.5; padding:28px 16px 60px;
+  }
+  .wrap{max-width:780px;margin:0 auto}
+  header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap}
+  .htitle{display:flex;flex-direction:column;gap:10px}
+  h1{font-size:19px;margin:0;font-weight:650;letter-spacing:-.01em}
+  h1 .sub{color:var(--muted);font-weight:450;font-size:14px}
+  .score{font-size:14px;color:var(--muted);white-space:nowrap;margin-top:3px}
+  .score b{color:var(--ink)}
+  .seg{display:inline-flex;background:#e0e3ea;border-radius:9px;padding:3px;gap:2px;width:fit-content}
+  .seg button{border:0;background:transparent;color:var(--muted);font-size:13px;font-weight:600;
+    padding:5px 14px;border-radius:7px;cursor:pointer;transition:all .12s}
+  .seg button:hover{color:var(--ink)}
+  .seg button.active{background:#fff;color:var(--accent);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+  .card{background:var(--paper);border-radius:14px;padding:26px 30px 30px;box-shadow:0 1px 3px rgba(0,0,0,.08),0 8px 30px rgba(0,0,0,.06)}
+  .qlabel{font-weight:700;font-size:16px;margin-bottom:6px}
+  .rule{border:0;border-top:1.5px solid var(--rule);margin:10px 0}
+  pre.code{
+    font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    font-size:15.5px;line-height:1.55;margin:14px 2px;white-space:pre;overflow-x:auto;
+    color:var(--ink);
+  }
+  pre.code .kw{color:var(--kw)}
+  .prompt{margin:18px 0 6px;font-size:15px}
+  .prompt .de{color:var(--ink)}
+  .prompt .en{color:var(--accent);font-style:italic}
+  .options{display:flex;flex-wrap:wrap;gap:8px 10px;margin-top:8px}
+  .opt{
+    display:inline-flex;align-items:center;gap:8px;cursor:pointer;
+    border:1.5px solid #d1d5db;border-radius:999px;padding:7px 15px 7px 12px;
+    font-size:16px;user-select:none;background:#fff;transition:all .12s;min-width:62px;
+  }
+  .opt:hover{border-color:#9ca3af}
+  .opt .dot{width:15px;height:15px;border-radius:50%;border:2px solid #9ca3af;flex:none;position:relative}
+  .opt .num{color:var(--muted);font-size:11px;font-weight:600;margin-right:1px}
+  .opt.sel{border-color:var(--pick);background:var(--pick-bg)}
+  .opt.sel .dot{border-color:var(--pick)}
+  .opt.sel .dot::after{content:"";position:absolute;inset:2px;border-radius:50%;background:var(--pick)}
+  .opt sup{font-size:.7em}
+  /* post-answer states */
+  .opt.correct{border-color:var(--good);background:var(--good-bg)}
+  .opt.correct .dot{border-color:var(--good)} .opt.correct .dot::after{content:"";position:absolute;inset:2px;border-radius:50%;background:var(--good)}
+  .opt.wrong{border-color:var(--bad);background:var(--bad-bg)}
+  .opt.wrong .dot{border-color:var(--bad)} .opt.wrong .dot::after{content:"";position:absolute;inset:2px;border-radius:50%;background:var(--bad)}
+  .opt.locked{cursor:default}
+  .actions{margin-top:22px;display:flex;gap:10px;align-items:center}
+  button{
+    font:inherit;font-size:15px;font-weight:550;border-radius:10px;padding:10px 18px;cursor:pointer;
+    border:1px solid transparent;transition:filter .12s,background .12s;
+  }
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-primary:hover{filter:brightness(1.08)}
+  .btn-primary:disabled{background:#c7cad6;cursor:not-allowed;filter:none}
+  .btn-ghost{background:#f1f2f6;color:var(--ink);border-color:#e2e4ea}
+  .btn-ghost:hover{background:#e8eaf0}
+  .hint{color:var(--muted);font-size:12.5px;margin-left:auto}
+  .feedback{margin-top:20px;border-radius:12px;padding:16px 18px;font-size:15px;display:none}
+  .feedback.show{display:block}
+  .feedback.ok{background:var(--good-bg);border:1px solid #bbf7d0}
+  .feedback.no{background:var(--bad-bg);border:1px solid #fecaca}
+  .feedback .verdict{font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  .feedback.ok .verdict{color:var(--good)} .feedback.no .verdict{color:var(--bad)}
+  .feedback .ans b{font-variant-numeric:tabular-nums}
+  .feedback .why{margin-top:8px;color:#27303f;line-height:1.6}
+  .feedback sup{font-size:.7em}
+  details.ref{margin-top:26px;background:var(--paper);border-radius:12px;padding:4px 18px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  details.ref summary{cursor:pointer;font-weight:600;font-size:14px;padding:12px 0;color:var(--accent)}
+  table.cheat{border-collapse:collapse;width:100%;font-size:13.5px;margin:6px 0 14px}
+  table.cheat td{border-top:1px solid #eef0f4;padding:7px 8px;vertical-align:top}
+  table.cheat td:first-child{font-weight:600;white-space:nowrap;width:90px}
+  table.cheat code{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:12.5px;color:#374151}
+  footer{text-align:center;color:var(--muted);font-size:12px;margin-top:22px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="htitle">
+      <h1>Asymptotic Trainer <span class="sub">— number of calls to <code>f</code></span></h1>
+      <div class="seg" id="diff" role="group" aria-label="Difficulty">
+        <button data-mode="easy">Easy</button>
+        <button data-mode="mixed" class="active">Mixed</button>
+        <button data-mode="hard">Hard</button>
+      </div>
+    </div>
+    <div class="score">Score <b id="sCorrect">0</b>/<b id="sTotal">0</b> · Streak <b id="sStreak">0</b></div>
+  </header>
+
+  <div class="card">
+    <div class="qlabel" id="qlabel">Q1</div>
+    <hr class="rule" />
+    <pre class="code" id="code"></pre>
+    <hr class="rule" />
+    <div class="prompt">
+      <span class="de">Asymptotische Anzahl Aufrufe von <code>f</code></span> /
+      <span class="en">Asymptotic number of calls to <code>f</code></span>:
+    </div>
+    <div class="options" id="options"></div>
+
+    <div class="actions">
+      <button class="btn-primary" id="submitBtn" disabled>Check answer</button>
+      <button class="btn-ghost" id="nextBtn" style="display:none">Next question →</button>
+      <span class="hint">keys <b>1–8</b> pick · <b>Enter</b> check / next</span>
+    </div>
+
+    <div class="feedback" id="feedback">
+      <div class="verdict" id="verdict"></div>
+      <div class="ans" id="ans"></div>
+      <div class="why" id="why"></div>
+    </div>
+  </div>
+
+  <details class="ref">
+    <summary>Reference — the 8 complexity classes &amp; what produces them</summary>
+    <table class="cheat">
+      <tr><td>1</td><td>Constant work, or a loop with a bound that doesn't depend on n. Single recursion that only hits the base case once. <code>for i in range(0, 8)</code></td></tr>
+      <tr><td>log n</td><td>A counter <i>multiplied</i> or <i>divided</i> by a constant each step. <code>i = 1; while i &lt; n: i *= 2</code></td></tr>
+      <tr><td>√n</td><td>Loop runs while <code>i*i &lt; n</code>, i.e. i reaches √n. <code>while i*i &lt; n: i += 1</code></td></tr>
+      <tr><td>n</td><td>A single loop over n (any constant step), or single recursion calling f at every level. <code>for i in range(0, n)</code></td></tr>
+      <tr><td>n log n</td><td>A linear loop nesting a geometric loop (or vice-versa). <code>for i in range(n): while j &lt; n: j *= 2</code></td></tr>
+      <tr><td>n²</td><td>Two nested loops over n — including triangular <code>for j in range(0, i)</code> and stepped outer loops.</td></tr>
+      <tr><td>n³</td><td>Three nested loops over n (full or triangular nesting).</td></tr>
+      <tr><td>2ⁿ</td><td>Recursion that branches into <b>two</b> calls on n-1. The recursion tree doubles each level. <code>g(n-1); g(n-1)</code></td></tr>
+    </table>
+  </details>
+
+  <footer>Procedurally generated · all answer formulas verified against brute-force simulation (see <code>verify.mjs</code>)</footer>
+</div>
+
+<script>
+"use strict";
+
+/* ------------------------------------------------------------------ *
+ * The 8 answer classes — fixed order, exactly like the exam sheet.
+ * ------------------------------------------------------------------ */
+const OPTIONS = [
+  { key:"one",   html:"1" },
+  { key:"n",     html:"n" },
+  { key:"logn",  html:"log n" },
+  { key:"sqrtn", html:"&radic;n" },
+  { key:"n2",    html:"n<sup>2</sup>" },
+  { key:"exp",   html:"2<sup>n</sup>" },
+  { key:"nlogn", html:"n log n" },
+  { key:"n3",    html:"n<sup>3</sup>" },
+];
+const LABEL = Object.fromEntries(OPTIONS.map(o => [o.key, o.html]));
+
+/* ------------------------------------------------------------------ *
+ * Generator families. Each entry: { d, gen } where
+ *   d   = difficulty tag: 'e' easy, 'h' hard, 'eh' both
+ *   gen = () => { code, cls, reason }
+ * Every family's asymptotic class is proven in verify.mjs (closed form
+ * == brute-force sim for n=0..24, and Theta band check). Easy mode = the
+ * recognizable single-mechanism families; hard mode = traps, triangular
+ * sums, sequential-max, and divide-and-conquer recursion.
+ * ------------------------------------------------------------------ */
+const ri = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+
+const FAMILIES = {
+  one: [
+    { d:'e', gen: () => { const C = pick([4,5,6,8,10,12]); return {
+      cls:"one",
+      code:`def g(n):\n    for i in range(0, ${C}):\n        f()`,
+      reason:`The loop runs a fixed ${C} times — a bound that does <b>not depend on n</b>. So <code>f</code> is called a constant number of times → <b>&Theta;(1)</b>.` }; } },
+    { d:'h', gen: () => ({
+      cls:"one",
+      code:`def g(n):\n    if n >= 1:\n        g(n-1)\n    else:\n        f()`,
+      reason:`Classic trap. <code>g</code> recurses on <code>n-1</code> but <code>f()</code> only runs in the base case (<code>n &lt; 1</code>). The recursion is a <b>single chain</b> of depth n that reaches the base case <b>exactly once</b>, so <code>f</code> is called once → <b>&Theta;(1)</b>.` }) },
+  ],
+  n: [
+    { d:'e', gen: () => { const s = pick([1,2,3]); const r = s===1 ? "range(0, n)" : `range(0, n, ${s})`; return {
+      cls:"n",
+      code:`def g(n):\n    for i in ${r}:\n        f()`,
+      reason:`<code>${r}</code> runs ${s===1?"n":`&lceil;n/${s}&rceil;`} times.${s===1?"":` Dividing by the constant step ${s} only changes a constant factor.`} → <b>&Theta;(n)</b>.` }; } },
+    { d:'e', gen: () => { const s = pick([1,2]); return {
+      cls:"n",
+      code:`def g(n):\n    i = 0\n    while i < n:\n        f()\n        i += ${s}`,
+      reason:`The counter goes <code>0, ${s}, ${2*s}, …</code> up to n, so the loop runs about n/${s} times → <b>&Theta;(n)</b>.` }; } },
+    { d:'e', gen: () => ({
+      cls:"n",
+      code:`def g(n):\n    for i in range(0, n):\n        f()\n    for j in range(0, n):\n        f()`,
+      reason:`Two <b>sequential</b> loops, each n times → 2n calls. Constants drop in &Theta; → <b>&Theta;(n)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"n",
+      code:`def g(n):\n    if n >= 1:\n        f()\n        g(n-1)`,
+      reason:`Every call makes <b>one</b> <code>f()</code> and recurses on <code>n-1</code>. Depth n, one call per level → <b>&Theta;(n)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"n",
+      code:`def g(n):\n    if n >= 1:\n        f()\n        g(n // 2)\n        g(n // 2)`,
+      reason:`A classic trap: there are <b>two</b> recursive calls, but each is on <code>n // 2</code> — not <code>n-1</code>. Level k of the tree has <code>2<sup>k</sup></code> calls on argument <code>n/2<sup>k</sup></code>, and the depth is only <code>log n</code>, so the total number of calls is <code>1 + 2 + 4 + … &asymp; 2n</code> → <b>&Theta;(n)</b>, <i>not</i> &Theta;(2<sup>n</sup>). Halving the argument is what keeps it linear.` }) },
+  ],
+  logn: [
+    { d:'e', gen: () => { const b = pick([2,3,4]); return {
+      cls:"logn",
+      code:`def g(n):\n    i = 1\n    while i < n:\n        f()\n        i *= ${b}`,
+      reason:`<code>i</code> starts at 1 and is multiplied by ${b} each step: <code>1, ${b}, ${b*b}, …</code> After k steps <code>i = ${b}<sup>k</sup></code>, reaching n when <code>k &asymp; log<sub>${b}</sub> n</code>. → <b>&Theta;(log n)</b> (the base ${b} is only a constant factor).` }; } },
+    { d:'h', gen: () => { const b = pick([2,3,4]); return {
+      cls:"logn",
+      code:`def g(n):\n    i = n\n    while i > 1:\n        f()\n        i //= ${b}`,
+      reason:`<code>i</code> starts at n and is divided by ${b} each step until it reaches 1 — that takes <code>&asymp; log<sub>${b}</sub> n</code> steps → <b>&Theta;(log n)</b>.` }; } },
+    { d:'h', gen: () => ({
+      cls:"logn",
+      code:`def g(n):\n    if n >= 1:\n        f()\n        g(n // 2)`,
+      reason:`Each call does one <code>f()</code> and recurses on <code>n // 2</code>. The argument <b>halves</b> every level, so the recursion depth — and hence the number of calls — is <code>&asymp; log n</code> → <b>&Theta;(log n)</b>.` }) },
+  ],
+  sqrtn: [
+    { d:'e', gen: () => ({
+      cls:"sqrtn",
+      code:`def g(n):\n    i = 1\n    while i * i < n:\n        f()\n        i += 1`,
+      reason:`The loop continues while <code>i&middot;i &lt; n</code>, i.e. while <code>i &lt; &radic;n</code>. So <code>i</code> runs from 1 up to about &radic;n → <b>&Theta;(&radic;n)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"sqrtn",
+      code:`def g(n):\n    i = 1\n    k = 1\n    while k < n:\n        f()\n        i += 1\n        k = i * i`,
+      reason:`The loop runs while <code>k &lt; n</code>, and <code>k = i<sup>2</sup></code>. It stops once <code>i<sup>2</sup> &ge; n</code>, i.e. after <code>i</code> reaches <code>&asymp; &radic;n</code> → <b>&Theta;(&radic;n)</b>.` }) },
+  ],
+  nlogn: [
+    { d:'e', gen: () => ({
+      cls:"nlogn",
+      code:`def g(n):\n    for i in range(0, n):\n        j = 1\n        while j < n:\n            f()\n            j *= 2`,
+      reason:`Outer loop: n iterations. Inner loop multiplies <code>j</code> by 2 until n → <code>&asymp; log n</code> iterations. Total <code>n &middot; log n</code> → <b>&Theta;(n log n)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"nlogn",
+      code:`def g(n):\n    i = 1\n    while i < n:\n        for j in range(0, n):\n            f()\n        i *= 2`,
+      reason:`Outer loop multiplies <code>i</code> by 2 until n → <code>&asymp; log n</code> iterations. Inner loop runs n times each. <code>log n &middot; n</code> → <b>&Theta;(n log n)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"nlogn",
+      code:`def g(n):\n    if n >= 1:\n        for i in range(0, n):\n            f()\n        g(n // 2)\n        g(n // 2)`,
+      reason:`This is the merge-sort recurrence <code>T(n) = 2&middot;T(n/2) + n</code>. There are <code>log n</code> levels and every level does <code>&Theta;(n)</code> work in total across its calls → <b>&Theta;(n log n)</b>. (Compare the no-loop version of this shape, which is only &Theta;(n).)` }) },
+  ],
+  n2: [
+    { d:'e', gen: () => ({
+      cls:"n2",
+      code:`def g(n):\n    for i in range(0, n):\n        for j in range(0, n):\n            f()`,
+      reason:`Two nested loops, each 0…n → <code>n &middot; n</code> calls → <b>&Theta;(n<sup>2</sup>)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"n2",
+      code:`def g(n):\n    for i in range(0, n):\n        for j in range(0, i):\n            f()`,
+      reason:`The inner loop runs <code>i</code> times for each outer <code>i</code> (0…n-1). Total <code>0+1+…+(n-1) = n(n-1)/2</code> → still <b>&Theta;(n<sup>2</sup>)</b>. A triangular loop is quadratic.` }) },
+    { d:'h', gen: () => { const s = pick([2,3]); return {
+      cls:"n2",
+      code:`def g(n):\n    for i in range(0, n, ${s}):\n        for j in range(0, i):\n            f()`,
+      reason:`Outer <code>i</code> takes values <code>0, ${s}, ${2*s}, …</code> (about n/${s} of them) and the inner loop runs <code>i</code> times. The sum is <code>&asymp; n<sup>2</sup>/(2&middot;${s})</code> → <b>&Theta;(n<sup>2</sup>)</b>. The outer step only changes the constant.` }; } },
+    { d:'h', gen: () => ({
+      cls:"n2",
+      code:`def g(n):\n    if n >= 1:\n        for i in range(0, n):\n            f()\n        g(n-1)`,
+      reason:`At each level the argument is m, so the loop makes m calls, then it recurses on m-1. Total <code>n + (n-1) + … + 1 = n(n+1)/2</code> → <b>&Theta;(n<sup>2</sup>)</b>. Linear work at every level of a linear recursion is quadratic.` }) },
+    { d:'h', gen: () => ({
+      cls:"n2",
+      code:`def g(n):\n    for i in range(0, n):\n        for j in range(0, n):\n            f()\n    for k in range(0, n):\n        f()`,
+      reason:`Two parts run one after another: a quadratic double loop (<code>n<sup>2</sup></code>) then a single loop (<code>n</code>). Sequential blocks add, and the larger term wins: <code>n<sup>2</sup> + n</code> → <b>&Theta;(n<sup>2</sup>)</b>.` }) },
+  ],
+  n3: [
+    { d:'e', gen: () => ({
+      cls:"n3",
+      code:`def g(n):\n    for i in range(0, n):\n        for j in range(0, n):\n            for k in range(0, n):\n                f()`,
+      reason:`Three nested loops, each 0…n → <code>n<sup>3</sup></code> calls → <b>&Theta;(n<sup>3</sup>)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"n3",
+      code:`def g(n):\n    for i in range(0, n):\n        for j in range(0, i):\n            for k in range(0, j):\n                f()`,
+      reason:`Three nested triangular loops (<code>j&lt;i</code>, <code>k&lt;j</code>) sum to <code>&asymp; n<sup>3</sup>/6</code> → <b>&Theta;(n<sup>3</sup>)</b>. Three increasing bounds → cubic.` }) },
+  ],
+  exp: [
+    { d:'e', gen: () => ({
+      cls:"exp",
+      code:`def g(n):\n    if n <= 0:\n        f()\n    else:\n        g(n-1)\n        g(n-1)`,
+      reason:`<code>g</code> branches into <b>two</b> calls on <code>n-1</code> and only calls <code>f()</code> at the base case. The recursion tree is a full binary tree of depth n with <code>2<sup>n</sup></code> leaves → <b>&Theta;(2<sup>n</sup>)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"exp",
+      code:`def g(n):\n    f()\n    if n >= 1:\n        g(n-1)\n        g(n-1)`,
+      reason:`<code>f()</code> runs once per call, then <code>g</code> branches into <b>two</b> calls on <code>n-1</code> (note: <code>n-1</code>, not <code>n//2</code>). The recursion tree has <code>2<sup>n+1</sup>-1</code> nodes → <b>&Theta;(2<sup>n</sup>)</b>.` }) },
+  ],
+};
+
+const CLASS_KEYS = Object.keys(FAMILIES); // all 8
+
+let mode = "mixed"; // 'easy' | 'mixed' | 'hard'
+function inMode(fam){
+  if (mode === "mixed") return true;
+  return mode === "easy" ? fam.d.includes("e") : fam.d.includes("h");
+}
+
+function nextQuestion(){
+  // class-first (balanced answers); restricted to families allowed by the current difficulty.
+  const classes = CLASS_KEYS.filter(c => FAMILIES[c].some(inMode));
+  const cls = pick(classes);
+  const fam = pick(FAMILIES[cls].filter(inMode));
+  return fam.gen();
+}
+
+/* ------------------------------------------------------------------ *
+ * Python-ish syntax highlighting (keywords + range in blue).
+ * ------------------------------------------------------------------ */
+const KEYWORDS = ["def","for","while","if","elif","else","in","return","and","or","not","range"];
+function highlight(code){
+  const esc = code.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  return esc.replace(/\b([A-Za-z_]\w*)\b/g, (m) =>
+    KEYWORDS.includes(m) ? `<span class="kw">${m}</span>` : m);
+}
+
+/* ------------------------------------------------------------------ *
+ * State + rendering
+ * ------------------------------------------------------------------ */
+let current = null, selected = null, answered = false;
+let qNum = 0, correct = 0, total = 0, streak = 0;
+
+const el = (id) => document.getElementById(id);
+const optionsEl = el("options"), feedbackEl = el("feedback");
+
+function renderOptions(){
+  optionsEl.innerHTML = "";
+  OPTIONS.forEach((o, idx) => {
+    const d = document.createElement("div");
+    d.className = "opt";
+    d.dataset.key = o.key;
+    d.innerHTML = `<span class="dot"></span><span class="num">${idx+1}</span><span>${o.html}</span>`;
+    d.addEventListener("click", () => selectOption(o.key));
+    optionsEl.appendChild(d);
+  });
+}
+
+function selectOption(key){
+  if (answered) return;
+  selected = key;
+  [...optionsEl.children].forEach(c => c.classList.toggle("sel", c.dataset.key === key));
+  el("submitBtn").disabled = false;
+}
+
+function loadQuestion(){
+  current = nextQuestion();
+  selected = null; answered = false;
+  qNum++;
+  el("qlabel").textContent = "Q" + qNum;
+  el("code").innerHTML = highlight(current.code);
+  renderOptions();
+  feedbackEl.className = "feedback";
+  el("submitBtn").style.display = "";
+  el("submitBtn").disabled = true;
+  el("nextBtn").style.display = "none";
+}
+
+function submit(){
+  if (answered || !selected) return;
+  answered = true;
+  const isRight = selected === current.cls;
+  total++; if (isRight){ correct++; streak++; } else { streak = 0; }
+  el("sCorrect").textContent = correct;
+  el("sTotal").textContent = total;
+  el("sStreak").textContent = streak;
+
+  [...optionsEl.children].forEach(c => {
+    c.classList.add("locked");
+    if (c.dataset.key === current.cls) c.classList.add("correct");
+    if (c.dataset.key === selected && !isRight) c.classList.add("wrong");
+    c.classList.remove("sel");
+  });
+
+  feedbackEl.className = "feedback show " + (isRight ? "ok" : "no");
+  el("verdict").innerHTML = isRight
+    ? "✓ Correct"
+    : "✗ Not quite";
+  el("ans").innerHTML = isRight
+    ? `The answer is <b>${LABEL[current.cls]}</b>.`
+    : `You picked <b>${LABEL[selected]}</b>. The correct answer is <b>${LABEL[current.cls]}</b>.`;
+  el("why").innerHTML = current.reason;
+
+  el("submitBtn").style.display = "none";
+  el("nextBtn").style.display = "";
+  el("nextBtn").focus();
+}
+
+el("submitBtn").addEventListener("click", submit);
+el("nextBtn").addEventListener("click", loadQuestion);
+
+/* ---- difficulty toggle (persisted) ---- */
+function setMode(m, reload){
+  if (!["easy","mixed","hard"].includes(m)) m = "mixed";
+  mode = m;
+  [...el("diff").children].forEach(b => b.classList.toggle("active", b.dataset.mode === m));
+  try { localStorage.setItem("at-mode", m); } catch (_) {}
+  if (reload) loadQuestion();
+}
+el("diff").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-mode]");
+  if (b) setMode(b.dataset.mode, true);
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key >= "1" && e.key <= "8"){
+    const idx = parseInt(e.key, 10) - 1;
+    if (!answered && OPTIONS[idx]) selectOption(OPTIONS[idx].key);
+    return;
+  }
+  if (e.key === "Enter"){
+    e.preventDefault();
+    if (!answered){ if (selected) submit(); }
+    else loadQuestion();
+  }
+});
+
+/* ------------------------------------------------------------------ *
+ * Lightweight self-test (console): every family produces its claimed
+ * class, and every difficulty mode can still offer all 8 answers.
+ * ------------------------------------------------------------------ */
+(function selfTest(){
+  let bad = 0;
+  for (const k of CLASS_KEYS){
+    for (const fam of FAMILIES[k]){
+      if (!["e","h","eh"].includes(fam.d)){ console.error("bad difficulty tag", k, fam.d); bad++; }
+      const q = fam.gen();
+      if (q.cls !== k){ console.error("class mismatch", k, q); bad++; }
+      if (!q.code || !q.reason){ console.error("empty family", k); bad++; }
+      if (!LABEL[q.cls]){ console.error("unknown class", q.cls); bad++; }
+    }
+  }
+  // coverage: each mode must have >=1 family for every class (else an answer can never appear)
+  const has = (k, m) => FAMILIES[k].some(f => m === "mixed" ? true : f.d.includes(m === "easy" ? "e" : "h"));
+  for (const m of ["easy","hard"])
+    for (const k of CLASS_KEYS)
+      if (!has(k, m)){ console.error(`coverage gap: class ${k} has no ${m} family`); bad++; }
+  const total = CLASS_KEYS.reduce((s,k)=>s+FAMILIES[k].length,0);
+  console.log(bad === 0
+    ? `Asymptotic Trainer: ${total} families OK across 8 classes; easy & hard modes both cover all classes.`
+    : bad + " self-test errors");
+})();
+
+/* restore saved difficulty, then start */
+try { const saved = localStorage.getItem("at-mode"); if (saved) setMode(saved, false); } catch (_) {}
+loadQuestion();
+</script>
+</body>
+</html>
