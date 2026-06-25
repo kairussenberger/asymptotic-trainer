@@ -7,14 +7,16 @@
 // Run: `node verify.mjs`
 
 const CLASS = {
-  one:   { label: "1",       fn: (n) => 1 },
-  n:     { label: "n",       fn: (n) => n },
-  logn:  { label: "log n",   fn: (n) => Math.log2(n) },
-  sqrtn: { label: "√n",      fn: (n) => Math.sqrt(n) },
-  n2:    { label: "n²",      fn: (n) => n * n },
-  exp:   { label: "2ⁿ",      fn: (n) => Math.pow(2, n) },
-  nlogn: { label: "n log n", fn: (n) => n * Math.log2(n) },
-  n3:    { label: "n³",      fn: (n) => n * n * n },
+  one:       { label: "1",         fn: (n) => 1 },
+  n:         { label: "n",         fn: (n) => n },
+  logn:      { label: "log n",     fn: (n) => Math.log2(n) },
+  sqrtn:     { label: "√n",        fn: (n) => Math.sqrt(n) },
+  sqrtnlogn: { label: "√n log n",  fn: (n) => Math.sqrt(n) * Math.log2(n) },
+  n2:        { label: "n²",        fn: (n) => n * n },
+  exp:       { label: "2ⁿ",        fn: (n) => Math.pow(2, n) },
+  nlogn:     { label: "n log n",   fn: (n) => n * Math.log2(n) },
+  n3:        { label: "n³",        fn: (n) => n * n * n },
+  n6:        { label: "n⁶",        fn: (n) => Math.pow(n, 6) },
 };
 
 // Each family: cls (claimed class), count (closed form), sim (brute-force ground truth).
@@ -117,17 +119,68 @@ const COUNTERS = {
   sqrt_acc: { cls: "sqrtn",
     count: (n) => { let c = 0, i = 1, k = 1; while (k < n) { c++; i++; k = i * i; } return c; },
     sim:   (n) => { let c = 0, i = 1, k = 1; while (k < n) { c++; i++; k = i * i; } return c; } },
+
+  // Θ(√n) — triangular accumulator s = 1+2+...+i reaches n when i ≈ √(2n)
+  sqrt_tri: { cls: "sqrtn",
+    count: (n) => { let c = 0, i = 0, s = 0; while (s < n) { c++; i++; s += i; } return c; },
+    sim:   (n) => { let c = 0, i = 0, s = 0; while (s < n) { c++; i++; s += i; } return c; } },
+
+  // ---- families from the new exam screenshots ----
+
+  // Θ(√n log n) — outer √n loop (i*i<n) nesting an inner halving loop (log n)
+  sqrt_log: { cls: "sqrtnlogn",
+    count: (n) => { let c = 0; for (let i = 1; i * i < n; i++) { let j = n; while (j > 1) { c++; j = Math.floor(j / 2); } } return c; },
+    sim:   (n) => { let c = 0, i = 1; while (i * i < n) { let j = n; while (j > 1) { c++; j = Math.floor(j / 2); } i++; } return c; } },
+  // Θ(√n log n) — outer √n loop nesting an inner doubling loop (log n)
+  sqrt_log2: { cls: "sqrtnlogn",
+    count: (n) => { let c = 0; for (let i = 1; i * i < n; i++) { for (let j = 1; j < n; j *= 2) c++; } return c; },
+    sim:   (n) => { let c = 0, i = 1; while (i * i < n) { let j = 1; while (j < n) { c++; j *= 2; } i++; } return c; } },
+
+  // Θ(n⁶) — for i in range(n²): for j in range(i²)  -> Σ_{i<n²} i²  (sum of squares of m=n² terms)
+  n6_tri: { cls: "n6", maxN: 8,
+    count: (n) => { const m = n * n; return m <= 0 ? 0 : ((m - 1) * m * (2 * m - 1)) / 6; },
+    sim:   (n) => { let c = 0; const m = n * n; for (let i = 0; i < m; i++) for (let j = 0; j < i * i; j++) c++; return c; } },
+  // Θ(n⁶) — two nested loops each running n³ times -> (n³)·(n³)
+  n6_full: { cls: "n6", maxN: 8,
+    count: (n) => Math.pow(Math.max(0, n), 6),
+    sim:   (n) => { let c = 0; const m = n * n * n; for (let i = 0; i < m; i++) for (let j = 0; j < m; j++) c++; return c; } },
+
+  // Θ(n log n) — geometric (halving) outer loop, linear inner loop
+  nlogn_c: { cls: "nlogn",
+    count: (n) => { let outer = 0; for (let i = n; i > 1; i = Math.floor(i / 2)) outer++; return outer * Math.max(0, n); },
+    sim:   (n) => { let c = 0, i = n; while (i > 1) { for (let j = 0; j < n; j++) c++; i = Math.floor(i / 2); } return c; } },
+
+  // Θ(n) — geometric outer loop with i-sized inner work: 1+2+4+...+~n ≈ 2n (trap: looks like n log n)
+  lin_geomwork: { cls: "n",
+    count: (n) => { let c = 0; for (let i = 1; i < n; i *= 2) c += i; return c; },
+    sim:   (n) => { let c = 0, i = 1; while (i < n) { for (let j = 0; j < i; j++) c++; i *= 2; } return c; } },
+
+  // Θ(n²) — f() then FOUR recursive calls on n//2  (a=4, b=2  ->  n^log2(4) = n²)
+  rec_quad_half: { cls: "n2",
+    count: (() => { const memo = new Map(); const C = (m) => { if (m < 0) return 0; if (memo.has(m)) return memo.get(m); const v = 1 + (m > 1 ? 4 * C(Math.floor(m / 2)) : 0); memo.set(m, v); return v; }; return (n) => C(n); })(),
+    sim:   (n) => { let c = 0; const g = (m) => { c++; if (m > 1) { g(Math.floor(m / 2)); g(Math.floor(m / 2)); g(Math.floor(m / 2)); g(Math.floor(m / 2)); } }; g(n); return c; } },
+
+  // Θ(n²) — n² work per call + two recursive calls on n//2 (work at the top dominates: 2T(n/2)+n²)
+  rec_work_dominates: { cls: "n2",
+    count: (() => { const memo = new Map(); const C = (m) => { if (m < 1) return 0; if (memo.has(m)) return memo.get(m); const v = m * m + (m > 1 ? 2 * C(Math.floor(m / 2)) : 0); memo.set(m, v); return v; }; return (n) => C(n); })(),
+    sim:   (n) => { let c = 0; const g = (m) => { for (let i = 0; i < m * m; i++) c++; if (m > 1) { g(Math.floor(m / 2)); g(Math.floor(m / 2)); } }; g(n); return c; } },
+
+  // Θ(2ⁿ) — linear loop per call + two recursive calls on n-1 (the loop doesn't change exponential)
+  exp_work: { cls: "exp", maxN: 18,
+    count: (() => { const memo = new Map(); const C = (m) => { if (m < 0) return 0; if (memo.has(m)) return memo.get(m); const v = Math.max(0, m) + (m >= 1 ? 2 * C(m - 1) : 0); memo.set(m, v); return v; }; return (n) => C(n); })(),
+    sim:   (n) => { let c = 0; const g = (m) => { for (let i = 0; i < m; i++) c++; if (m >= 1) { g(m - 1); g(m - 1); } }; g(n); return c; } },
 };
 
 // ---- Layer 1: closed form must equal brute-force sim for all small n ----
 let exactFail = 0;
 for (const [name, ctr] of Object.entries(COUNTERS)) {
-  for (let n = 0; n <= 24; n++) {
+  const maxN = ctr.maxN ?? 24; // heavy families (n⁶, 2ⁿ) cap the brute-force sim range
+  for (let n = 0; n <= maxN; n++) {
     const a = ctr.count(n), b = ctr.sim(n);
     if (a !== b) { console.log(`EXACT FAIL ${name} n=${n}: count=${a} sim=${b}`); exactFail++; }
   }
 }
-console.log(exactFail === 0 ? "✓ exactness: all closed forms match brute-force sim (n=0..24)" : `✗ exactness: ${exactFail} mismatches`);
+console.log(exactFail === 0 ? "✓ exactness: all closed forms match brute-force sim (n=0..maxN per family)" : `✗ exactness: ${exactFail} mismatches`);
 
 // ---- Layer 2: Theta band check using the (fast) closed form ----
 function thetaOk(ctr) {
@@ -156,10 +209,10 @@ console.log("-".repeat(62));
 console.log(`${pass} passed, ${fail} failed`);
 
 // ---- separation: representative of each class out-grows the one below ----
-const repr = { one: "const_loop", logn: "log_mul", sqrtn: "sqrt_lt", n: "lin_for", nlogn: "nlogn_a", n2: "sq_full", n3: "cube_full" };
+const repr = { one: "const_loop", logn: "log_mul", sqrtn: "sqrt_lt", sqrtnlogn: "sqrt_log", n: "lin_for", nlogn: "nlogn_a", n2: "sq_full", n3: "cube_full", n6: "n6_full" };
 let prev = -1, sepOk = true;
 console.log("\nseparation @ n=65536:");
-for (const cls of ["one", "logn", "sqrtn", "n", "nlogn", "n2", "n3"]) {
+for (const cls of ["one", "logn", "sqrtn", "sqrtnlogn", "n", "nlogn", "n2", "n3", "n6"]) {
   const v = COUNTERS[repr[cls]].count(65536);
   const ok = v > prev; if (!ok) sepOk = false;
   console.log(`  ${CLASS[cls].label.padEnd(8)} -> ${v.toExponential(3)} ${ok ? "✓" : "✗"}`);

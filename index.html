@@ -118,7 +118,7 @@
     <div class="actions">
       <button class="btn-primary" id="submitBtn" disabled>Check answer</button>
       <button class="btn-ghost" id="nextBtn" style="display:none">Next question →</button>
-      <span class="hint">keys <b>1–8</b> pick · <b>Enter</b> check / next</span>
+      <span class="hint">keys <b>1–0</b> pick · <b>Enter</b> check / next</span>
     </div>
 
     <div class="feedback" id="feedback">
@@ -129,16 +129,18 @@
   </div>
 
   <details class="ref">
-    <summary>Reference — the 8 complexity classes &amp; what produces them</summary>
+    <summary>Reference — the complexity classes &amp; what produces them</summary>
     <table class="cheat">
       <tr><td>1</td><td>Constant work, or a loop with a bound that doesn't depend on n. Single recursion that only hits the base case once. <code>for i in range(0, 8)</code></td></tr>
-      <tr><td>log n</td><td>A counter <i>multiplied</i> or <i>divided</i> by a constant each step. <code>i = 1; while i &lt; n: i *= 2</code></td></tr>
+      <tr><td>log n</td><td>A counter <i>multiplied</i> or <i>divided</i> by a constant each step; or single recursion on <code>n // 2</code>. <code>i = 1; while i &lt; n: i *= 2</code></td></tr>
       <tr><td>√n</td><td>Loop runs while <code>i*i &lt; n</code>, i.e. i reaches √n. <code>while i*i &lt; n: i += 1</code></td></tr>
-      <tr><td>n</td><td>A single loop over n (any constant step), or single recursion calling f at every level. <code>for i in range(0, n)</code></td></tr>
-      <tr><td>n log n</td><td>A linear loop nesting a geometric loop (or vice-versa). <code>for i in range(n): while j &lt; n: j *= 2</code></td></tr>
-      <tr><td>n²</td><td>Two nested loops over n — including triangular <code>for j in range(0, i)</code> and stepped outer loops.</td></tr>
+      <tr><td>√n log n</td><td>A √n loop nesting a log-n (halving/doubling) loop. <code>while i*i &lt; n: while j &gt; 1: j //= 2</code></td></tr>
+      <tr><td>n</td><td>A single loop over n; single recursion calling f at every level; or geometric work <code>1+2+4+…</code>; or <b>two</b> recursive calls on <code>n // 2</code>. <code>for i in range(0, n)</code></td></tr>
+      <tr><td>n log n</td><td>A linear loop nesting a geometric loop (or vice-versa); or merge-sort <code>2·T(n/2)+n</code>. <code>for i in range(n): while j &lt; n: j *= 2</code></td></tr>
+      <tr><td>n²</td><td>Two nested loops over n (incl. triangular/stepped); linear work down a linear recursion; or <b>four</b> recursive calls on <code>n // 2</code>.</td></tr>
       <tr><td>n³</td><td>Three nested loops over n (full or triangular nesting).</td></tr>
-      <tr><td>2ⁿ</td><td>Recursion that branches into <b>two</b> calls on n-1. The recursion tree doubles each level. <code>g(n-1); g(n-1)</code></td></tr>
+      <tr><td>n⁶</td><td>Loops with <code>n**2</code>/<code>n**3</code> bounds nested. <code>for i in range(n**2): for j in range(i**2)</code></td></tr>
+      <tr><td>2ⁿ</td><td>Recursion that branches into <b>two</b> calls on <b>n-1</b> (not n//2). The tree doubles each level. <code>g(n-1); g(n-1)</code></td></tr>
     </table>
   </details>
 
@@ -149,17 +151,19 @@
 "use strict";
 
 /* ------------------------------------------------------------------ *
- * The 8 answer classes — fixed order, exactly like the exam sheet.
+ * The answer classes — fixed order, exam-sheet style.
  * ------------------------------------------------------------------ */
 const OPTIONS = [
-  { key:"one",   html:"1" },
-  { key:"n",     html:"n" },
-  { key:"logn",  html:"log n" },
-  { key:"sqrtn", html:"&radic;n" },
-  { key:"n2",    html:"n<sup>2</sup>" },
-  { key:"exp",   html:"2<sup>n</sup>" },
-  { key:"nlogn", html:"n log n" },
-  { key:"n3",    html:"n<sup>3</sup>" },
+  { key:"one",       html:"1" },
+  { key:"n",         html:"n" },
+  { key:"logn",      html:"log n" },
+  { key:"sqrtn",     html:"&radic;n" },
+  { key:"sqrtnlogn", html:"&radic;n log n" },
+  { key:"n2",        html:"n<sup>2</sup>" },
+  { key:"exp",       html:"2<sup>n</sup>" },
+  { key:"nlogn",     html:"n log n" },
+  { key:"n3",        html:"n<sup>3</sup>" },
+  { key:"n6",        html:"n<sup>6</sup>" },
 ];
 const LABEL = Object.fromEntries(OPTIONS.map(o => [o.key, o.html]));
 
@@ -207,6 +211,10 @@ const FAMILIES = {
       cls:"n",
       code:`def g(n):\n    if n >= 1:\n        f()\n        g(n // 2)\n        g(n // 2)`,
       reason:`A classic trap: there are <b>two</b> recursive calls, but each is on <code>n // 2</code> — not <code>n-1</code>. Level k of the tree has <code>2<sup>k</sup></code> calls on argument <code>n/2<sup>k</sup></code>, and the depth is only <code>log n</code>, so the total number of calls is <code>1 + 2 + 4 + … &asymp; 2n</code> → <b>&Theta;(n)</b>, <i>not</i> &Theta;(2<sup>n</sup>). Halving the argument is what keeps it linear.` }) },
+    { d:'h', gen: () => ({
+      cls:"n",
+      code:`def g(n):\n    i = 1\n    while i < n:\n        for j in range(0, i):\n            f()\n        i *= 2`,
+      reason:`Looks like n&middot;log n, but watch the inner loop: it runs <code>i</code> times while <code>i</code> <b>doubles</b> each step. The total work is <code>1 + 2 + 4 + … + &asymp;n</code> — a geometric series dominated by its last term — which sums to <code>&asymp; 2n</code> → <b>&Theta;(n)</b>.` }) },
   ],
   logn: [
     { d:'e', gen: () => { const b = pick([2,3,4]); return {
@@ -231,6 +239,10 @@ const FAMILIES = {
       cls:"sqrtn",
       code:`def g(n):\n    i = 1\n    k = 1\n    while k < n:\n        f()\n        i += 1\n        k = i * i`,
       reason:`The loop runs while <code>k &lt; n</code>, and <code>k = i<sup>2</sup></code>. It stops once <code>i<sup>2</sup> &ge; n</code>, i.e. after <code>i</code> reaches <code>&asymp; &radic;n</code> → <b>&Theta;(&radic;n)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"sqrtn",
+      code:`def g(n):\n    i = 0\n    s = 0\n    while s < n:\n        f()\n        i += 1\n        s += i`,
+      reason:`Each step adds the next integer to <code>s</code>, so after k steps <code>s = 1+2+…+k = k(k+1)/2</code>. The loop stops when <code>s &ge; n</code>, i.e. when <code>k &asymp; &radic;(2n)</code> → <b>&Theta;(&radic;n)</b>.` }) },
   ],
   nlogn: [
     { d:'e', gen: () => ({
@@ -245,6 +257,10 @@ const FAMILIES = {
       cls:"nlogn",
       code:`def g(n):\n    if n >= 1:\n        for i in range(0, n):\n            f()\n        g(n // 2)\n        g(n // 2)`,
       reason:`This is the merge-sort recurrence <code>T(n) = 2&middot;T(n/2) + n</code>. There are <code>log n</code> levels and every level does <code>&Theta;(n)</code> work in total across its calls → <b>&Theta;(n log n)</b>. (Compare the no-loop version of this shape, which is only &Theta;(n).)` }) },
+    { d:'h', gen: () => ({
+      cls:"nlogn",
+      code:`def g(n):\n    i = n\n    while i > 1:\n        for j in range(0, n):\n            f()\n        i = i // 2`,
+      reason:`The outer loop <b>halves</b> <code>i</code> each step → <code>&asymp; log n</code> iterations; the inner loop runs n times each. <code>log n &middot; n</code> → <b>&Theta;(n log n)</b>.` }) },
   ],
   n2: [
     { d:'e', gen: () => ({
@@ -267,6 +283,14 @@ const FAMILIES = {
       cls:"n2",
       code:`def g(n):\n    for i in range(0, n):\n        for j in range(0, n):\n            f()\n    for k in range(0, n):\n        f()`,
       reason:`Two parts run one after another: a quadratic double loop (<code>n<sup>2</sup></code>) then a single loop (<code>n</code>). Sequential blocks add, and the larger term wins: <code>n<sup>2</sup> + n</code> → <b>&Theta;(n<sup>2</sup>)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"n2",
+      code:`def g(n):\n    f()\n    if n > 1:\n        g(n // 2)\n        g(n // 2)\n        g(n // 2)\n        g(n // 2)`,
+      reason:`<b>Four</b> recursive calls, each on <code>n // 2</code>. Level k of the tree has <code>4<sup>k</sup></code> calls and the depth is <code>log&#8322; n</code>, so the total is <code>&asymp; 4<sup>log&#8322; n</sup> = n<sup>2</sup></code> → <b>&Theta;(n<sup>2</sup>)</b>. (Master theorem: a=4, b=2 → <code>n<sup>log&#8322;4</sup> = n<sup>2</sup></code>.)` }) },
+    { d:'h', gen: () => ({
+      cls:"n2",
+      code:`def g(n):\n    for i in range(0, n**2):\n        f()\n    if n > 1:\n        g(n // 2)\n        g(n // 2)`,
+      reason:`Each call does <code>n<sup>2</sup></code> work, then two recursive calls on <code>n // 2</code>: <code>T(n) = 2&middot;T(n/2) + n<sup>2</sup></code>. The <code>n<sup>2</sup></code> at the top dominates (sub-problems add only <code>n<sup>2</sup>/2 + n<sup>2</sup>/4 + …</code>), so the total is <code>&asymp; 2n<sup>2</sup></code> → <b>&Theta;(n<sup>2</sup>)</b>.` }) },
   ],
   n3: [
     { d:'e', gen: () => ({
@@ -287,6 +311,30 @@ const FAMILIES = {
       cls:"exp",
       code:`def g(n):\n    f()\n    if n >= 1:\n        g(n-1)\n        g(n-1)`,
       reason:`<code>f()</code> runs once per call, then <code>g</code> branches into <b>two</b> calls on <code>n-1</code> (note: <code>n-1</code>, not <code>n//2</code>). The recursion tree has <code>2<sup>n+1</sup>-1</code> nodes → <b>&Theta;(2<sup>n</sup>)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"exp",
+      code:`def g(n):\n    for i in range(0, n):\n        f()\n    if n >= 1:\n        g(n-1)\n        g(n-1)`,
+      reason:`The loop adds only <code>n</code> work per call, but each call still branches into <b>two</b> calls on <code>n-1</code>. The branching dominates — the call tree doubles every level → <b>&Theta;(2<sup>n</sup>)</b>. A linear loop can't tame exponential recursion.` }) },
+  ],
+  sqrtnlogn: [
+    { d:'h', gen: () => ({
+      cls:"sqrtnlogn",
+      code:`def g(n):\n    i = 1\n    while i * i < n:\n        j = n\n        while j > 1:\n            f()\n            j = j // 2\n        i = i + 1`,
+      reason:`Outer loop runs while <code>i&middot;i &lt; n</code> → <code>&asymp; &radic;n</code> iterations. The inner loop halves <code>j</code> from n down to 1 → <code>&asymp; log n</code> iterations. Product: <code>&radic;n &middot; log n</code> → <b>&Theta;(&radic;n log n)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"sqrtnlogn",
+      code:`def g(n):\n    i = 1\n    while i * i < n:\n        j = 1\n        while j < n:\n            f()\n            j *= 2\n        i += 1`,
+      reason:`Outer loop runs <code>&asymp; &radic;n</code> times (until <code>i&middot;i &ge; n</code>); the inner loop doubles <code>j</code> up to n → <code>&asymp; log n</code> times. <code>&radic;n &middot; log n</code> → <b>&Theta;(&radic;n log n)</b>.` }) },
+  ],
+  n6: [
+    { d:'h', gen: () => ({
+      cls:"n6",
+      code:`def g(n):\n    for i in range(0, n**2):\n        for j in range(0, i**2):\n            f()`,
+      reason:`The outer loop runs <code>n<sup>2</sup></code> times; for each <code>i</code> the inner loop runs <code>i<sup>2</sup></code> times. Total <code>&Sigma;<sub>i&lt;n&sup2;</sub> i<sup>2</sup> &asymp; (n<sup>2</sup>)<sup>3</sup>/3 = n<sup>6</sup>/3</code> → <b>&Theta;(n<sup>6</sup>)</b>. (Sum of squares up to m is &Theta;(m<sup>3</sup>); here m = n<sup>2</sup>.)` }) },
+    { d:'h', gen: () => ({
+      cls:"n6",
+      code:`def g(n):\n    for i in range(0, n**3):\n        for j in range(0, n**3):\n            f()`,
+      reason:`Two nested loops, each running <code>n<sup>3</sup></code> times → <code>n<sup>3</sup> &middot; n<sup>3</sup> = n<sup>6</sup></code> → <b>&Theta;(n<sup>6</sup>)</b>.` }) },
   ],
 };
 
@@ -331,7 +379,7 @@ function renderOptions(){
     const d = document.createElement("div");
     d.className = "opt";
     d.dataset.key = o.key;
-    d.innerHTML = `<span class="dot"></span><span class="num">${idx+1}</span><span>${o.html}</span>`;
+    d.innerHTML = `<span class="dot"></span><span class="num">${idx === 9 ? 0 : idx+1}</span><span>${o.html}</span>`;
     d.addEventListener("click", () => selectOption(o.key));
     optionsEl.appendChild(d);
   });
@@ -404,8 +452,8 @@ el("diff").addEventListener("click", (e) => {
 });
 
 document.addEventListener("keydown", (e) => {
-  if (e.key >= "1" && e.key <= "8"){
-    const idx = parseInt(e.key, 10) - 1;
+  if (/^[0-9]$/.test(e.key)){
+    const idx = e.key === "0" ? 9 : parseInt(e.key, 10) - 1; // 1..9 -> 0..8, 0 -> 10th
     if (!answered && OPTIONS[idx]) selectOption(OPTIONS[idx].key);
     return;
   }
@@ -431,14 +479,17 @@ document.addEventListener("keydown", (e) => {
       if (!LABEL[q.cls]){ console.error("unknown class", q.cls); bad++; }
     }
   }
-  // coverage: each mode must have >=1 family for every class (else an answer can never appear)
-  const has = (k, m) => FAMILIES[k].some(f => m === "mixed" ? true : f.d.includes(m === "easy" ? "e" : "h"));
-  for (const m of ["easy","hard"])
-    for (const k of CLASS_KEYS)
-      if (!has(k, m)){ console.error(`coverage gap: class ${k} has no ${m} family`); bad++; }
+  // every answer option must be reachable: it needs a class group with families
+  for (const o of OPTIONS)
+    if (!FAMILIES[o.key] || FAMILIES[o.key].length === 0){ console.error(`option ${o.key} has no family`); bad++; }
+  // hard mode must offer every answer class (so the full option set is reachable);
+  // easy mode intentionally omits the advanced classes (√n log n, n⁶).
+  for (const k of CLASS_KEYS)
+    if (!FAMILIES[k].some(f => f.d.includes("h"))){ console.error(`coverage gap: class ${k} has no hard family`); bad++; }
   const total = CLASS_KEYS.reduce((s,k)=>s+FAMILIES[k].length,0);
+  const easyClasses = CLASS_KEYS.filter(k => FAMILIES[k].some(f => f.d.includes("e"))).length;
   console.log(bad === 0
-    ? `Asymptotic Trainer: ${total} families OK across 8 classes; easy & hard modes both cover all classes.`
+    ? `Asymptotic Trainer: ${total} families across ${CLASS_KEYS.length} classes; hard covers all, easy covers ${easyClasses}.`
     : bad + " self-test errors");
 })();
 
