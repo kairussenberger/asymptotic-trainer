@@ -169,6 +169,118 @@ const COUNTERS = {
   exp_work: { cls: "exp", maxN: 18,
     count: (() => { const memo = new Map(); const C = (m) => { if (m < 0) return 0; if (memo.has(m)) return memo.get(m); const v = Math.max(0, m) + (m >= 1 ? 2 * C(m - 1) : 0); memo.set(m, v); return v; }; return (n) => C(n); })(),
     sim:   (n) => { let c = 0; const g = (m) => { for (let i = 0; i < m; i++) c++; if (m >= 1) { g(m - 1); g(m - 1); } }; g(n); return c; } },
+
+  // ==== additional families (expanded question pool) — kept in sync with index.html ====
+
+  // Θ(1) — constant nested loops, constant while, halving recursion with f only at base, break-after-first
+  const_nested: { cls: "one",
+    count: (n, p = { C: 8, D: 6 }) => p.C * p.D,
+    sim:   (n, p = { C: 8, D: 6 }) => { let c = 0; for (let i = 0; i < p.C; i++) for (let j = 0; j < p.D; j++) c++; return c; } },
+  const_while: { cls: "one",
+    count: (n, p = { C: 8 }) => p.C,
+    sim:   (n, p = { C: 8 }) => { let c = 0, i = 0; while (i < p.C) { c++; i++; } return c; } },
+  const_rec_half: { cls: "one",
+    count: (n) => 1,
+    sim:   (n) => { const g = (m) => (m <= 1 ? 1 : g(Math.floor(m / 2))); return g(n); } },
+  const_break: { cls: "one",
+    count: (n) => (n >= 1 ? 1 : 0),
+    sim:   (n) => { let c = 0; for (let i = 0; i < n; i++) { c++; break; } return c; } },
+
+  // Θ(n) — two calls per pass, linear + constant block, constant inner loop (trap), rec on n-2, countdown
+  lin_two_body: { cls: "n",
+    count: (n) => 2 * Math.max(0, n),
+    sim:   (n) => { let c = 0; for (let i = 0; i < n; i++) { c++; c++; } return c; } },
+  lin_plus_const: { cls: "n",
+    count: (n, p = { C: 10 }) => Math.max(0, n) + p.C,
+    sim:   (n, p = { C: 10 }) => { let c = 0; for (let i = 0; i < n; i++) c++; for (let j = 0; j < p.C; j++) c++; return c; } },
+  lin_const_inner: { cls: "n",
+    count: (n, p = { K: 5 }) => p.K * Math.max(0, n),
+    sim:   (n, p = { K: 5 }) => { let c = 0; for (let i = 0; i < n; i++) for (let j = 0; j < p.K; j++) c++; return c; } },
+  lin_rec_step2: { cls: "n",
+    count: (n) => (n <= 0 ? 0 : Math.ceil(n / 2)),
+    sim:   (n) => { let c = 0; const g = (m) => { if (m >= 1) { c++; g(m - 2); } }; g(n); return c; } },
+  lin_countdown: { cls: "n",
+    count: (n) => Math.max(0, n),
+    sim:   (n) => { let c = 0, i = n; while (i >= 1) { c++; i--; } return c; } },
+
+  // Θ(log n) — i+=i doubling, recursion on n//3, bound n² but doubling, halving n itself
+  log_double_add: { cls: "logn",
+    count: (n) => { let c = 0; for (let i = 1; i < n; i += i) c++; return c; },
+    sim:   (n) => { let c = 0, i = 1; while (i < n) { c++; i += i; } return c; } },
+  rec_third: { cls: "logn",
+    count: (n, p = { b: 3 }) => { let c = 0, m = n; while (m >= 1) { c++; m = Math.floor(m / p.b); } return c; },
+    sim:   (n, p = { b: 3 }) => { let c = 0; const g = (m) => { if (m >= 1) { c++; g(Math.floor(m / p.b)); } }; g(n); return c; } },
+  log_nsq: { cls: "logn",
+    count: (n) => { let c = 0; for (let i = 1; i < n * n; i *= 2) c++; return c; },
+    sim:   (n) => { let c = 0, i = 1; while (i < n * n) { c++; i *= 2; } return c; } },
+  log_div_n: { cls: "logn",
+    count: (n) => { let c = 0, m = n; while (m > 1) { c++; m = Math.floor(m / 2); } return c; },
+    sim:   (n) => { let c = 0, m = n; while (m > 1) { c++; m = Math.floor(m / 2); } return c; } },
+
+  // Θ(√n) — i*i<n stepping by 2, triangular countdown, two calls per pass
+  sqrt_step2: { cls: "sqrtn",
+    count: (n) => { let c = 0, i = 0; while (i * i < n) { c++; i += 2; } return c; },
+    sim:   (n) => { let c = 0, i = 0; while (i * i < n) { c++; i += 2; } return c; } },
+  sqrt_tri_down: { cls: "sqrtn",
+    count: (n) => { let c = 0, s = n, i = 1; while (s > 0) { c++; s -= i; i++; } return c; },
+    sim:   (n) => { let c = 0, s = n, i = 1; while (s > 0) { c++; s -= i; i++; } return c; } },
+  sqrt_two: { cls: "sqrtn",
+    count: (n) => { let c = 0; for (let i = 1; i * i < n; i++) c += 2; return c; },
+    sim:   (n) => { let c = 0; for (let i = 1; i * i < n; i++) { c++; c++; } return c; } },
+
+  // Θ(n log n) — linear outer + halving inner, and harmonic Σ log i = log(n!)
+  nlogn_d: { cls: "nlogn",
+    count: (n) => { let inner = 0; for (let m = n; m > 1; m = Math.floor(m / 2)) inner++; return Math.max(0, n) * inner; },
+    sim:   (n) => { let c = 0; for (let i = 0; i < n; i++) { let m = n; while (m > 1) { c++; m = Math.floor(m / 2); } } return c; } },
+  nlogn_harmonic: { cls: "nlogn",
+    count: (n) => { let c = 0; for (let i = 0; i < n; i++) { let j = i; while (j >= 1) { c++; j = Math.floor(j / 2); } } return c; },
+    sim:   (n) => { let c = 0; for (let i = 0; i < n; i++) { let j = i; while (j >= 1) { c++; j = Math.floor(j / 2); } } return c; } },
+
+  // Θ(n²) — single loop to n², inner step 2, reverse-triangular, while-outer
+  sq_single: { cls: "n2",
+    count: (n) => Math.max(0, n) * Math.max(0, n),
+    sim:   (n) => { let c = 0; const m = n * n; for (let i = 0; i < m; i++) c++; return c; } },
+  sq_inner_step: { cls: "n2",
+    count: (n) => (n <= 0 ? 0 : n * Math.ceil(n / 2)),
+    sim:   (n) => { let c = 0; for (let i = 0; i < n; i++) for (let j = 0; j < n; j += 2) c++; return c; } },
+  sq_tri_rev: { cls: "n2",
+    count: (n) => (n <= 0 ? 0 : (n * (n + 1)) / 2),
+    sim:   (n) => { let c = 0; for (let i = 0; i < n; i++) for (let j = i; j < n; j++) c++; return c; } },
+  sq_while: { cls: "n2",
+    count: (n) => Math.max(0, n) * Math.max(0, n),
+    sim:   (n) => { let c = 0, i = 0; while (i < n) { for (let j = 0; j < n; j++) c++; i++; } return c; } },
+
+  // Θ(n³) — linear × n², n² × linear, mixed triangular
+  cube_lin_nsq: { cls: "n3",
+    count: (n) => Math.max(0, n) ** 3,
+    sim:   (n) => { let c = 0; const m = n * n; for (let i = 0; i < n; i++) for (let j = 0; j < m; j++) c++; return c; } },
+  cube_mix: { cls: "n3",
+    count: (n) => (n <= 0 ? 0 : (n * n * (n - 1)) / 2),
+    sim:   (n) => { let c = 0; for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) for (let k = 0; k < i; k++) c++; return c; } },
+  cube_nsq_n: { cls: "n3",
+    count: (n) => Math.max(0, n) * Math.max(0, n) * Math.max(0, n),
+    sim:   (n) => { let c = 0; const m = n * n; for (let i = 0; i < m; i++) for (let j = 0; j < n; j++) c++; return c; } },
+
+  // Θ(2ⁿ) — two calls on n-1 with a constant leaf loop
+  exp_leaf_const: { cls: "exp", maxN: 18,
+    count: (n, p = { C: 5 }) => p.C * Math.pow(2, Math.max(0, n)),
+    sim:   (n, p = { C: 5 }) => { const g = (m) => { if (m <= 0) { let c = 0; for (let i = 0; i < p.C; i++) c++; return c; } return g(m - 1) + g(m - 1); }; return g(n); } },
+
+  // Θ(√n log n) — √n outer nesting an inner base-3 doubling loop
+  sqrt_log3: { cls: "sqrtnlogn",
+    count: (n) => { let c = 0; for (let i = 1; i * i < n; i++) { for (let j = 1; j < n; j *= 3) c++; } return c; },
+    sim:   (n) => { let c = 0, i = 1; while (i * i < n) { let j = 1; while (j < n) { c++; j *= 3; } i++; } return c; } },
+
+  // Θ(n⁶) — n²×n⁴, triangular over n³, three nested n² loops
+  n6_2_4: { cls: "n6", maxN: 8,
+    count: (n) => Math.pow(Math.max(0, n), 6),
+    sim:   (n) => { let c = 0; const a = n * n, b = n * n * n * n; for (let i = 0; i < a; i++) for (let j = 0; j < b; j++) c++; return c; } },
+  n6_tri3: { cls: "n6", maxN: 8,
+    count: (n) => { const m = n * n * n; return m <= 0 ? 0 : (m * (m - 1)) / 2; },
+    sim:   (n) => { let c = 0; const m = n * n * n; for (let i = 0; i < m; i++) for (let j = 0; j < i; j++) c++; return c; } },
+  n6_three: { cls: "n6", maxN: 8,
+    count: (n) => Math.pow(Math.max(0, n), 6),
+    sim:   (n) => { let c = 0; const m = n * n; for (let i = 0; i < m; i++) for (let j = 0; j < m; j++) for (let k = 0; k < m; k++) c++; return c; } },
 };
 
 // ---- Layer 1: closed form must equal brute-force sim for all small n ----

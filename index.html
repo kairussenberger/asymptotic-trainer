@@ -189,6 +189,22 @@ const FAMILIES = {
       cls:"one",
       code:`def g(n):\n    if n >= 1:\n        g(n-1)\n    else:\n        f()`,
       reason:`Classic trap. <code>g</code> recurses on <code>n-1</code> but <code>f()</code> only runs in the base case (<code>n &lt; 1</code>). The recursion is a <b>single chain</b> of depth n that reaches the base case <b>exactly once</b>, so <code>f</code> is called once → <b>&Theta;(1)</b>.` }) },
+    { d:'e', gen: () => { const C = pick([3,4,5]); const D = pick([4,5,6]); return {
+      cls:"one",
+      code:`def g(n):\n    for i in range(0, ${C}):\n        for j in range(0, ${D}):\n            f()`,
+      reason:`Both loop bounds are fixed constants (${C} and ${D}) — neither depends on n. So <code>f</code> runs exactly ${C}&times;${D} = ${C*D} times → <b>&Theta;(1)</b>.` }; } },
+    { d:'e', gen: () => { const C = pick([6,8,10,12]); return {
+      cls:"one",
+      code:`def g(n):\n    i = 0\n    while i < ${C}:\n        f()\n        i += 1`,
+      reason:`The counter runs from 0 up to the constant ${C}, a bound that does <b>not depend on n</b> → <code>f</code> is called ${C} times → <b>&Theta;(1)</b>.` }; } },
+    { d:'h', gen: () => ({
+      cls:"one",
+      code:`def g(n):\n    if n <= 1:\n        f()\n    else:\n        g(n // 2)`,
+      reason:`Looks like the &Theta;(log n) halving recursion, but <code>f()</code> only runs in the base case. There is a <b>single</b> chain of calls (each makes one recursive call on <code>n // 2</code>) that reaches the base case <b>once</b>, so <code>f</code> is called exactly once → <b>&Theta;(1)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"one",
+      code:`def g(n):\n    for i in range(0, n):\n        f()\n        break`,
+      reason:`The loop header says <code>range(0, n)</code>, but the <code>break</code> exits after the very first iteration. So <code>f</code> runs once, no matter how large n is → <b>&Theta;(1)</b>.` }) },
   ],
   n: [
     { d:'e', gen: () => { const s = pick([1,2,3]); const r = s===1 ? "range(0, n)" : `range(0, n, ${s})`; return {
@@ -215,6 +231,26 @@ const FAMILIES = {
       cls:"n",
       code:`def g(n):\n    i = 1\n    while i < n:\n        for j in range(0, i):\n            f()\n        i *= 2`,
       reason:`Looks like n&middot;log n, but watch the inner loop: it runs <code>i</code> times while <code>i</code> <b>doubles</b> each step. The total work is <code>1 + 2 + 4 + … + &asymp;n</code> — a geometric series dominated by its last term — which sums to <code>&asymp; 2n</code> → <b>&Theta;(n)</b>.` }) },
+    { d:'e', gen: () => ({
+      cls:"n",
+      code:`def g(n):\n    for i in range(0, n):\n        f()\n        f()`,
+      reason:`The loop runs n times and makes <b>two</b> calls each pass → 2n calls. The constant 2 drops in &Theta; → <b>&Theta;(n)</b>.` }) },
+    { d:'e', gen: () => { const C = pick([8,10,12]); return {
+      cls:"n",
+      code:`def g(n):\n    for i in range(0, n):\n        f()\n    for j in range(0, ${C}):\n        f()`,
+      reason:`A loop of n calls followed by a loop of a constant ${C} calls: <code>n + ${C}</code>. Sequential blocks add and the n term dominates → <b>&Theta;(n)</b>.` }; } },
+    { d:'h', gen: () => { const K = pick([3,4,5,6]); return {
+      cls:"n",
+      code:`def g(n):\n    for i in range(0, n):\n        for j in range(0, ${K}):\n            f()`,
+      reason:`It looks nested, but the <b>inner</b> bound is the constant ${K}, not n. Each of the n outer passes makes ${K} calls → ${K}n → <b>&Theta;(n)</b>. Only a loop whose bound grows with n adds a factor of n.` }; } },
+    { d:'h', gen: () => ({
+      cls:"n",
+      code:`def g(n):\n    if n >= 1:\n        f()\n        g(n - 2)`,
+      reason:`One <code>f()</code> per call, then recursion on <code>n - 2</code>. The chain has depth <code>&asymp; n/2</code>, and cutting the <i>number of levels</i> in half is only a constant factor → <b>&Theta;(n)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"n",
+      code:`def g(n):\n    i = n\n    while i >= 1:\n        f()\n        i -= 1`,
+      reason:`The counter starts at n and decreases by 1 until it reaches 0, so the loop runs n times → <b>&Theta;(n)</b>.` }) },
   ],
   logn: [
     { d:'e', gen: () => { const b = pick([2,3,4]); return {
@@ -229,6 +265,22 @@ const FAMILIES = {
       cls:"logn",
       code:`def g(n):\n    if n >= 1:\n        f()\n        g(n // 2)`,
       reason:`Each call does one <code>f()</code> and recurses on <code>n // 2</code>. The argument <b>halves</b> every level, so the recursion depth — and hence the number of calls — is <code>&asymp; log n</code> → <b>&Theta;(log n)</b>.` }) },
+    { d:'e', gen: () => ({
+      cls:"logn",
+      code:`def g(n):\n    i = 1\n    while i < n:\n        f()\n        i += i`,
+      reason:`<code>i += i</code> <b>doubles</b> <code>i</code> each step (1, 2, 4, 8, …), reaching n after <code>&asymp; log&#8322; n</code> steps → <b>&Theta;(log n)</b>.` }) },
+    { d:'h', gen: () => { const b = pick([3,4]); return {
+      cls:"logn",
+      code:`def g(n):\n    if n >= 1:\n        f()\n        g(n // ${b})`,
+      reason:`Each call does one <code>f()</code> and recurses on <code>n // ${b}</code>. Dividing the argument by ${b} every level makes the depth <code>&asymp; log<sub>${b}</sub> n</code> → <b>&Theta;(log n)</b> (the base ${b} is only a constant factor).` }; } },
+    { d:'h', gen: () => ({
+      cls:"logn",
+      code:`def g(n):\n    i = 1\n    while i < n * n:\n        f()\n        i *= 2`,
+      reason:`The bound is <code>n<sup>2</sup></code>, but doubling still reaches it in a logarithmic number of steps: <code>log(n<sup>2</sup>) = 2 log n</code>. The factor 2 drops → <b>&Theta;(log n)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"logn",
+      code:`def g(n):\n    while n > 1:\n        f()\n        n = n // 2`,
+      reason:`<code>n</code> itself is halved each iteration until it reaches 1 — that takes <code>&asymp; log&#8322; n</code> steps → <b>&Theta;(log n)</b>.` }) },
   ],
   sqrtn: [
     { d:'e', gen: () => ({
@@ -243,6 +295,18 @@ const FAMILIES = {
       cls:"sqrtn",
       code:`def g(n):\n    i = 0\n    s = 0\n    while s < n:\n        f()\n        i += 1\n        s += i`,
       reason:`Each step adds the next integer to <code>s</code>, so after k steps <code>s = 1+2+…+k = k(k+1)/2</code>. The loop stops when <code>s &ge; n</code>, i.e. when <code>k &asymp; &radic;(2n)</code> → <b>&Theta;(&radic;n)</b>.` }) },
+    { d:'e', gen: () => ({
+      cls:"sqrtn",
+      code:`def g(n):\n    i = 0\n    while i * i < n:\n        f()\n        i += 2`,
+      reason:`The loop runs while <code>i&middot;i &lt; n</code>, i.e. while <code>i &lt; &radic;n</code>. Stepping by 2 reaches &radic;n in about &radic;n/2 steps — the constant &frac12; drops → <b>&Theta;(&radic;n)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"sqrtn",
+      code:`def g(n):\n    s = n\n    i = 1\n    while s > 0:\n        f()\n        s -= i\n        i += 1`,
+      reason:`Each step subtracts the next integer from <code>s</code>: after k steps a total of <code>1+2+…+k = k(k+1)/2</code> has been removed. <code>s</code> hits 0 when <code>k(k+1)/2 &asymp; n</code>, i.e. <code>k &asymp; &radic;(2n)</code> → <b>&Theta;(&radic;n)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"sqrtn",
+      code:`def g(n):\n    i = 1\n    while i * i < n:\n        f()\n        f()\n        i += 1`,
+      reason:`The bound <code>i&middot;i &lt; n</code> makes the loop run <code>&asymp; &radic;n</code> times; the two calls per pass only double the count → <b>&Theta;(&radic;n)</b>.` }) },
   ],
   nlogn: [
     { d:'e', gen: () => ({
@@ -261,6 +325,14 @@ const FAMILIES = {
       cls:"nlogn",
       code:`def g(n):\n    i = n\n    while i > 1:\n        for j in range(0, n):\n            f()\n        i = i // 2`,
       reason:`The outer loop <b>halves</b> <code>i</code> each step → <code>&asymp; log n</code> iterations; the inner loop runs n times each. <code>log n &middot; n</code> → <b>&Theta;(n log n)</b>.` }) },
+    { d:'e', gen: () => ({
+      cls:"nlogn",
+      code:`def g(n):\n    for i in range(0, n):\n        j = n\n        while j > 1:\n            f()\n            j = j // 2`,
+      reason:`Outer loop: n iterations. Inner loop halves <code>j</code> from n down to 1 → <code>&asymp; log n</code> iterations each. <code>n &middot; log n</code> → <b>&Theta;(n log n)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"nlogn",
+      code:`def g(n):\n    for i in range(0, n):\n        j = i\n        while j >= 1:\n            f()\n            j = j // 2`,
+      reason:`The inner loop halves <code>j</code> from <code>i</code> down to 1, so it runs <code>&asymp; log i</code> times. Summing over the outer loop gives <code>log 1 + log 2 + … + log n = log(n!) &asymp; n log n</code> → <b>&Theta;(n log n)</b>. (Each inner loop is short, but they add up.)` }) },
   ],
   n2: [
     { d:'e', gen: () => ({
@@ -291,6 +363,22 @@ const FAMILIES = {
       cls:"n2",
       code:`def g(n):\n    for i in range(0, n**2):\n        f()\n    if n > 1:\n        g(n // 2)\n        g(n // 2)`,
       reason:`Each call does <code>n<sup>2</sup></code> work, then two recursive calls on <code>n // 2</code>: <code>T(n) = 2&middot;T(n/2) + n<sup>2</sup></code>. The <code>n<sup>2</sup></code> at the top dominates (sub-problems add only <code>n<sup>2</sup>/2 + n<sup>2</sup>/4 + …</code>), so the total is <code>&asymp; 2n<sup>2</sup></code> → <b>&Theta;(n<sup>2</sup>)</b>.` }) },
+    { d:'e', gen: () => ({
+      cls:"n2",
+      code:`def g(n):\n    for i in range(0, n * n):\n        f()`,
+      reason:`A <b>single</b> loop, but its bound is <code>n&middot;n</code>, so it runs <code>n<sup>2</sup></code> times → <b>&Theta;(n<sup>2</sup>)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"n2",
+      code:`def g(n):\n    for i in range(0, n):\n        for j in range(0, n, 2):\n            f()`,
+      reason:`Outer loop n times; the inner loop steps by 2, so it runs <code>&asymp; n/2</code> times. <code>n &middot; n/2 = n<sup>2</sup>/2</code> → <b>&Theta;(n<sup>2</sup>)</b>. The step of 2 only changes the constant.` }) },
+    { d:'h', gen: () => ({
+      cls:"n2",
+      code:`def g(n):\n    for i in range(0, n):\n        for j in range(i, n):\n            f()`,
+      reason:`For each <code>i</code> the inner loop runs from <code>i</code> to n, i.e. <code>n - i</code> times. The total is <code>n + (n-1) + … + 1 = n(n+1)/2</code> → <b>&Theta;(n<sup>2</sup>)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"n2",
+      code:`def g(n):\n    i = 0\n    while i < n:\n        for j in range(0, n):\n            f()\n        i += 1`,
+      reason:`The <code>while</code> counts <code>i</code> from 0 to n (n iterations) and the inner loop runs n times each → <code>n &middot; n</code> → <b>&Theta;(n<sup>2</sup>)</b>. A <code>while</code> counting up to n is just a loop over n.` }) },
   ],
   n3: [
     { d:'e', gen: () => ({
@@ -301,6 +389,18 @@ const FAMILIES = {
       cls:"n3",
       code:`def g(n):\n    for i in range(0, n):\n        for j in range(0, i):\n            for k in range(0, j):\n                f()`,
       reason:`Three nested triangular loops (<code>j&lt;i</code>, <code>k&lt;j</code>) sum to <code>&asymp; n<sup>3</sup>/6</code> → <b>&Theta;(n<sup>3</sup>)</b>. Three increasing bounds → cubic.` }) },
+    { d:'e', gen: () => ({
+      cls:"n3",
+      code:`def g(n):\n    for i in range(0, n):\n        for j in range(0, n * n):\n            f()`,
+      reason:`Outer loop n times, inner loop <code>n<sup>2</sup></code> times → <code>n &middot; n<sup>2</sup> = n<sup>3</sup></code> → <b>&Theta;(n<sup>3</sup>)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"n3",
+      code:`def g(n):\n    for i in range(0, n):\n        for j in range(0, n):\n            for k in range(0, i):\n                f()`,
+      reason:`The two outer loops give <code>n<sup>2</sup></code> pairs, and the innermost runs <code>i</code> times. Summing, <code>&Sigma;<sub>i</sub> n&middot;i = n &middot; n(n-1)/2 &asymp; n<sup>3</sup>/2</code> → <b>&Theta;(n<sup>3</sup>)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"n3",
+      code:`def g(n):\n    for i in range(0, n * n):\n        for j in range(0, n):\n            f()`,
+      reason:`Outer loop runs <code>n<sup>2</sup></code> times, inner loop n times → <code>n<sup>2</sup> &middot; n = n<sup>3</sup></code> → <b>&Theta;(n<sup>3</sup>)</b>.` }) },
   ],
   exp: [
     { d:'e', gen: () => ({
@@ -315,6 +415,10 @@ const FAMILIES = {
       cls:"exp",
       code:`def g(n):\n    for i in range(0, n):\n        f()\n    if n >= 1:\n        g(n-1)\n        g(n-1)`,
       reason:`The loop adds only <code>n</code> work per call, but each call still branches into <b>two</b> calls on <code>n-1</code>. The branching dominates — the call tree doubles every level → <b>&Theta;(2<sup>n</sup>)</b>. A linear loop can't tame exponential recursion.` }) },
+    { d:'h', gen: () => ({
+      cls:"exp",
+      code:`def g(n):\n    if n <= 0:\n        for i in range(0, 5):\n            f()\n    else:\n        g(n-1)\n        g(n-1)`,
+      reason:`The recursion still branches into <b>two</b> calls on <code>n-1</code>, so it has <code>2<sup>n</sup></code> leaves. Each leaf does a constant 5 calls — a constant factor — so the total is <code>5&middot;2<sup>n</sup></code> → <b>&Theta;(2<sup>n</sup>)</b>.` }) },
   ],
   sqrtnlogn: [
     { d:'h', gen: () => ({
@@ -325,6 +429,10 @@ const FAMILIES = {
       cls:"sqrtnlogn",
       code:`def g(n):\n    i = 1\n    while i * i < n:\n        j = 1\n        while j < n:\n            f()\n            j *= 2\n        i += 1`,
       reason:`Outer loop runs <code>&asymp; &radic;n</code> times (until <code>i&middot;i &ge; n</code>); the inner loop doubles <code>j</code> up to n → <code>&asymp; log n</code> times. <code>&radic;n &middot; log n</code> → <b>&Theta;(&radic;n log n)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"sqrtnlogn",
+      code:`def g(n):\n    i = 1\n    while i * i < n:\n        j = 1\n        while j < n:\n            f()\n            j *= 3\n        i += 1`,
+      reason:`Outer loop runs <code>&asymp; &radic;n</code> times (until <code>i&middot;i &ge; n</code>); the inner loop triples <code>j</code> up to n → <code>&asymp; log<sub>3</sub> n</code> times. <code>&radic;n &middot; log n</code> → <b>&Theta;(&radic;n log n)</b>.` }) },
   ],
   n6: [
     { d:'h', gen: () => ({
@@ -335,10 +443,22 @@ const FAMILIES = {
       cls:"n6",
       code:`def g(n):\n    for i in range(0, n**3):\n        for j in range(0, n**3):\n            f()`,
       reason:`Two nested loops, each running <code>n<sup>3</sup></code> times → <code>n<sup>3</sup> &middot; n<sup>3</sup> = n<sup>6</sup></code> → <b>&Theta;(n<sup>6</sup>)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"n6",
+      code:`def g(n):\n    for i in range(0, n**2):\n        for j in range(0, n**4):\n            f()`,
+      reason:`Outer loop runs <code>n<sup>2</sup></code> times, inner loop <code>n<sup>4</sup></code> times → <code>n<sup>2</sup> &middot; n<sup>4</sup> = n<sup>6</sup></code> → <b>&Theta;(n<sup>6</sup>)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"n6",
+      code:`def g(n):\n    for i in range(0, n**3):\n        for j in range(0, i):\n            f()`,
+      reason:`The outer loop runs <code>n<sup>3</sup></code> times; the inner runs <code>i</code> times. The triangular sum is <code>&asymp; (n<sup>3</sup>)<sup>2</sup>/2 = n<sup>6</sup>/2</code> → <b>&Theta;(n<sup>6</sup>)</b>.` }) },
+    { d:'h', gen: () => ({
+      cls:"n6",
+      code:`def g(n):\n    for i in range(0, n**2):\n        for j in range(0, n**2):\n            for k in range(0, n**2):\n                f()`,
+      reason:`Three nested loops, each running <code>n<sup>2</sup></code> times → <code>(n<sup>2</sup>)<sup>3</sup> = n<sup>6</sup></code> → <b>&Theta;(n<sup>6</sup>)</b>.` }) },
   ],
 };
 
-const CLASS_KEYS = Object.keys(FAMILIES); // all 8
+const CLASS_KEYS = Object.keys(FAMILIES); // all 10 answer classes
 
 let mode = "mixed"; // 'easy' | 'mixed' | 'hard'
 function inMode(fam){
@@ -346,11 +466,18 @@ function inMode(fam){
   return mode === "easy" ? fam.d.includes("e") : fam.d.includes("h");
 }
 
+let lastCls = null, lastFam = null;
 function nextQuestion(){
   // class-first (balanced answers); restricted to families allowed by the current difficulty.
+  // Avoid immediately repeating the previous class or family so questions don't come
+  // back-to-back (re-roll a few times whenever there's more than one choice available).
   const classes = CLASS_KEYS.filter(c => FAMILIES[c].some(inMode));
-  const cls = pick(classes);
-  const fam = pick(FAMILIES[cls].filter(inMode));
+  let cls = pick(classes);
+  for (let t = 0; classes.length > 1 && cls === lastCls && t < 8; t++) cls = pick(classes);
+  const fams = FAMILIES[cls].filter(inMode);
+  let fam = pick(fams);
+  for (let t = 0; fams.length > 1 && fam === lastFam && t < 8; t++) fam = pick(fams);
+  lastCls = cls; lastFam = fam;
   return fam.gen();
 }
 
