@@ -466,18 +466,36 @@ function inMode(fam){
   return mode === "easy" ? fam.d.includes("e") : fam.d.includes("h");
 }
 
-let lastCls = null, lastFam = null;
+/* Shuffle-bag selection: one deck of classes (balanced answers — every class
+ * appears exactly once per 10-question cycle) plus one deck of families per
+ * class (a family cannot come back until every other family in its class has
+ * been dealt). The seam guard keeps a fresh shuffle from opening with the
+ * card that just closed the previous deck. */
+function shuffle(a){
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function refill(pool, last){
+  const d = shuffle(pool.slice());
+  if (d.length > 1 && d[d.length - 1] === last){ // next deal is pop() from the end
+    const j = Math.floor(Math.random() * (d.length - 1));
+    [d[d.length - 1], d[j]] = [d[j], d[d.length - 1]];
+  }
+  return d;
+}
+let classDeck = [], famDecks = {}, lastCls = null, lastFamOf = {};
+function resetDecks(){ classDeck = []; famDecks = {}; }
 function nextQuestion(){
-  // class-first (balanced answers); restricted to families allowed by the current difficulty.
-  // Avoid immediately repeating the previous class or family so questions don't come
-  // back-to-back (re-roll a few times whenever there's more than one choice available).
-  const classes = CLASS_KEYS.filter(c => FAMILIES[c].some(inMode));
-  let cls = pick(classes);
-  for (let t = 0; classes.length > 1 && cls === lastCls && t < 8; t++) cls = pick(classes);
-  const fams = FAMILIES[cls].filter(inMode);
-  let fam = pick(fams);
-  for (let t = 0; fams.length > 1 && fam === lastFam && t < 8; t++) fam = pick(fams);
-  lastCls = cls; lastFam = fam;
+  if (classDeck.length === 0)
+    classDeck = refill(CLASS_KEYS.filter(c => FAMILIES[c].some(inMode)), lastCls);
+  const cls = classDeck.pop();
+  if (!famDecks[cls] || famDecks[cls].length === 0)
+    famDecks[cls] = refill(FAMILIES[cls].filter(inMode), lastFamOf[cls]);
+  const fam = famDecks[cls].pop();
+  lastCls = cls; lastFamOf[cls] = fam;
   return fam.gen();
 }
 
@@ -568,6 +586,7 @@ el("nextBtn").addEventListener("click", loadQuestion);
 /* ---- difficulty toggle (persisted) ---- */
 function setMode(m, reload){
   if (!["easy","mixed","hard"].includes(m)) m = "mixed";
+  if (m !== mode) resetDecks(); // each difficulty draws from a different pool
   mode = m;
   [...el("diff").children].forEach(b => b.classList.toggle("active", b.dataset.mode === m));
   try { localStorage.setItem("at-mode", m); } catch (_) {}
